@@ -1,0 +1,95 @@
+[project]
+name = "livekit-v1-examples"
+version = "0.1.0"
+description = "Getting familiar with Livekit v1"
+authors = [
+    {name = "wira-putra-scoville",email = "wira.putra@sc0ville.com"}
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "livekit==1.0.6",
+    "livekit-agents==1.0.13",
+    "livekit-api==1.0.2",
+    "livekit-plugins-azure>=1.0.13",
+    "livekit-plugins-openai>=1.0.13",
+    "livekit-plugins-silero>=1.0.13",
+    "livekit-plugins-turn-detector>=1.0.13",
+]
+
+[dependency-groups]
+dev = [
+    "coverage>=7.8.0",
+    "mypy>=1.15.0",
+    "mypy-extensions>=1.0.0",
+    "poethepoet>=0.33.1",
+    "pytest>=8.3.5",
+    "pytest-asyncio>=0.26.0",
+    "python-dotenv>=1.1.0",
+    "ruff>=0.11.5",
+    "types-requests>=2.32.0.20250328",
+]
+
+[tool.mypy]
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.format]
+quote-style = "double"
+skip-magic-trailing-comma = true
+indent-style = "space"
+
+[tool.ruff.lint]
+select = [
+    "A",   # prevent using keywords that clobber python builtins
+    "ARG", # flake8-unused-arguments
+    "B",   # flake8-bugbear: security warnings
+    "C90", # mccabe, previously covered by flake518
+    "D",   # pydocstyle
+    "E",   # pycodestyle
+    "F",   # pyflakes
+    "N",   # pep8 naming
+    "PL",  # pylint
+    "RUF", # ruff rules,
+    "SIM", # flake8-simplify
+    "UP",  # pyupgrade - very nice tips to adopt sugar syntax if available, great with python 3.10
+    "W",   # pycodestyle warnings
+    "YTT", # flake8-2020
+]
+ignore = [
+    'D100', 'D101', 'D102', 'D103', 'D104', 'D105', 'D106', 'D107', # pydocstyle errors
+    'D205', 'D203', 'D213',
+    'D401', 'D406', 'D407', 'D412', 'D413',
+    'PLR2004', # pylint magic values
+    'RUF012', # avoid conflict with mypy enforcement
+    'UP015'
+]
+preview = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
+
+[tool.ruff.lint.pylint]
+max-args = 7
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "--ignore=tests/manual"
+markers = ["slow: marks tests as slow"]
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.poe.tasks]
+ruff-task = "ruff check src"
+mypy-task = "mypy src"
+test-task = "coverage run --source=src -m pytest tests/*"
+test-report = "coverage report -m"
+lint = ["ruff-task", "mypy-task"]
+test = ["test-task", "test-report"]
+all = ["lint", "test"]
