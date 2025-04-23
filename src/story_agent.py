@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 
 from dotenv import load_dotenv
 from livekit import api
@@ -18,21 +19,32 @@ from livekit.agents import (
 from livekit.agents.job import get_job_context
 from livekit.agents.llm import function_tool
 from livekit.agents.voice import MetricsCollectedEvent
-from livekit.plugins import noise_cancellation, openai, silero
+from livekit.plugins import openai, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
-from pydantic import BaseModel
 
-logger = logging.getLogger("story-agent")
+# uncomment to enable Krisp BVC noise cancellation, currently supported on Linux and MacOS
+# from livekit.plugins import noise_cancellation
+
+# The storyteller agent is a multi-agent that can handoff the session to another agent.
+# This example demonstrates more complex workflows with multiple agents.
+# Each agent could have its own instructions, as well as different STT, LLM, TTS,
+# or realtime models.
+
+logger = logging.getLogger("multi-agent")
 
 load_dotenv()
 
 common_instructions = (
-    "Your name is Maruko. You are a story teller that interacts with the user via voice."
+    "Your name is Echo. You are a story teller that interacts with the user via voice."
     "You are curious and friendly, with a sense of humor."
 )
 
 
-class StoryData(BaseModel):
+@dataclass
+class StoryData:
+    # Shared data that's used by the storyteller agent.
+    # This structure is passed as a parameter to function calls.
+
     name: str | None = None
     location: str | None = None
 
@@ -49,10 +61,7 @@ class IntroAgent(Agent):
     async def on_enter(self):
         # when the agent is added to the session, it'll generate a reply
         # according to its instructions
-        self.session.generate_reply(
-            instructions="Greet the user and introduce yourself. "
-            + "Your name is Maruko and you are a story teller."
-        )
+        self.session.generate_reply()
 
     @function_tool
     async def information_gathered(self, context: RunContext[StoryData], name: str, location: str):
@@ -66,10 +75,10 @@ class IntroAgent(Agent):
         context.userdata.name = name
         context.userdata.location = location
 
-        story_agent = StoryAgent(name, location)
+        # story_agent = StoryAgent(name, location)
         # by default, StoryAgent will start with a new context, to carry through the current
         # chat history, pass in the chat_ctx
-        # story_agent = StoryAgent(name, location, chat_ctx=context.chat_ctx)
+        story_agent = StoryAgent(name, location, chat_ctx=self.chat_ctx)
 
         logger.info(
             "switching to the story agent with the provided user data: %s", context.userdata
@@ -90,12 +99,20 @@ class StoryAgent(Agent):
             # each agent could override any of the model services, including mixing
             # realtime and non-realtime models
             chat_ctx=chat_ctx,
+            llm=openai.realtime.RealtimeModel(
+                model="gpt-4o-realtime-preview-2024-12-17",
+                voice="alloy",
+                # it's necessary to turn off turn detection in the OpenAI Realtime API in order to use
+                # LiveKit's turn detection model
+                turn_detection=None,
+                input_audio_transcription=None,  # we use STT instead
+            ),
         )
 
     async def on_enter(self):
         # when the agent is added to the session, we'll initiate the conversation by
         # using the LLM to generate a reply
-        self.session.generate_reply(instructions="Start the story with a short introduction.")
+        self.session.generate_reply()
 
     @function_tool
     async def story_finished(self, context: RunContext[StoryData]):
@@ -126,9 +143,13 @@ async def entrypoint(ctx: JobContext):
         allow_interruptions=False,
         turn_detection=MultilingualModel(),
         vad=ctx.proc.userdata["vad"],
+        stt=openai.STT(model="gpt-4o-mini-transcribe"),
+        # any combination of STT, LLM, TTS, or realtime API can be used
         llm=openai.realtime.RealtimeModel(
             model="gpt-4o-realtime-preview-2024-12-17",
             voice="sage",
+            # it's necessary to turn off turn detection in the OpenAI Realtime API in order to use
+            # LiveKit's turn detection model
             turn_detection=None,
             input_audio_transcription=None,  # we use STT instead
         ),
@@ -143,7 +164,7 @@ async def entrypoint(ctx: JobContext):
         metrics.log_metrics(ev.metrics)
         usage_collector.collect(ev.metrics)
 
-    async def log_usage():  # noqa
+    async def log_usage():
         summary = usage_collector.get_summary()
         logger.info(f"Usage: {summary}")
 
@@ -152,7 +173,10 @@ async def entrypoint(ctx: JobContext):
     await session.start(
         agent=IntroAgent(),
         room=ctx.room,
-        room_input_options=RoomInputOptions(noise_cancellation=noise_cancellation.BVC()),
+        room_input_options=RoomInputOptions(
+            # uncomment to enable Krisp BVC noise cancellation
+            # noise_cancellation=noise_cancellation.BVC(),
+        ),
         room_output_options=RoomOutputOptions(transcription_enabled=True),
     )
 
