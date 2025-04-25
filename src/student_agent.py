@@ -89,7 +89,7 @@ class BaseStudentAgent(Agent):
 
         # continue from previous conversation
         if seed_chat_ctx_filepath is not None:
-            chat_ctx = load_chat_ctx_from_file(seed_chat_ctx_filepath)
+            chat_ctx = load_chat_ctx_from_file(seed_chat_ctx_filepath, add_fake_messages=False)
         # else use the chat_ctx provided in constructor
 
         # initialize the agent

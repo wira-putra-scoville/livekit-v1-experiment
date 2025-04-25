@@ -33,7 +33,13 @@ class ChatCtxDumper:
             self.turn += 1
 
 
-def load_chat_ctx_from_file(file_path: str) -> ChatContext:
+def load_chat_ctx_from_file(file_path: str, add_fake_messages: bool = False) -> ChatContext:
     with open(file_path, "r", encoding="utf-8") as f:
         chat_ctx = ChatContext.from_dict(json.loads(f.readline()))
+
+    # add fake messages to experiment with longer contexts
+    if add_fake_messages:
+        for _ in range(1000):
+            chat_ctx.add_message(role="assistant", content=["I am still here if you need me."])
+
     return chat_ctx
