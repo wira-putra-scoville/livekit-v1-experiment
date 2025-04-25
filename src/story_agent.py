@@ -58,13 +58,15 @@ class IntroAgent(Agent):
             "Start the conversation with a short introduction."
         )
 
-    async def on_enter(self):
+    async def on_enter(self) -> None:
         # when the agent is added to the session, it'll generate a reply
         # according to its instructions
         self.session.generate_reply()
 
     @function_tool
-    async def information_gathered(self, context: RunContext[StoryData], name: str, location: str):
+    async def information_gathered(
+        self, context: RunContext[StoryData], name: str, location: str
+    ) -> tuple[Agent, str]:
         """Called when the user has provided the information needed to make the story
         personalized and engaging.
 
@@ -102,20 +104,21 @@ class StoryAgent(Agent):
             llm=openai.realtime.RealtimeModel(
                 model="gpt-4o-realtime-preview-2024-12-17",
                 voice="alloy",
-                # it's necessary to turn off turn detection in the OpenAI Realtime API in order to use
+                # it's necessary to turn off turn detection in the OpenAI Realtime API in
+                # order to use
                 # LiveKit's turn detection model
                 turn_detection=None,
                 input_audio_transcription=None,  # we use STT instead
             ),
         )
 
-    async def on_enter(self):
+    async def on_enter(self) -> None:
         # when the agent is added to the session, we'll initiate the conversation by
         # using the LLM to generate a reply
         self.session.generate_reply()
 
     @function_tool
-    async def story_finished(self, context: RunContext[StoryData]):
+    async def story_finished(self, context: RunContext[StoryData]) -> None:
         """When you are fininshed telling the story (and the user confirms they don't
         want anymore), call this function to end the conversation.
         """
@@ -132,11 +135,11 @@ class StoryAgent(Agent):
         await job_ctx.api.room.delete_room(api.DeleteRoomRequest(room=job_ctx.room.name))
 
 
-def prewarm(proc: JobProcess):
+def prewarm(proc: JobProcess) -> None:
     proc.userdata["vad"] = silero.VAD.load()
 
 
-async def entrypoint(ctx: JobContext):
+async def entrypoint(ctx: JobContext) -> None:
     await ctx.connect()
 
     session = AgentSession[StoryData](
@@ -160,11 +163,11 @@ async def entrypoint(ctx: JobContext):
     usage_collector = metrics.UsageCollector()
 
     @session.on("metrics_collected")
-    def _on_metrics_collected(ev: MetricsCollectedEvent):
+    def _on_metrics_collected(ev: MetricsCollectedEvent) -> None:
         metrics.log_metrics(ev.metrics)
         usage_collector.collect(ev.metrics)
 
-    async def log_usage():
+    async def log_usage() -> None:  # noqa
         summary = usage_collector.get_summary()
         logger.info(f"Usage: {summary}")
 
