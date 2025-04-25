@@ -71,7 +71,7 @@ class BaseStudentAgent(Agent):
         interview_lang: Literal["en", "ja"] = "en",
         seed_chat_ctx_filepath: str | None = None,
         chat_ctx: ChatContext | None = None,
-        ctx_max_n: int = 30,
+        ctx_max_n: int = 25,
         ctx_trim_ratio: float = 0.7,
     ) -> None:
         """Constructor.
@@ -80,7 +80,7 @@ class BaseStudentAgent(Agent):
         :param Literal["en", "ja"] interview_lang: interview language, defaults to "en"
         :param str | None seed_chat_ctx_filepath: to populate initial chat context, defaults to None
         :param str | None chat_ctx: initial chat context, defaults to None
-        :param int ctx_max_n: max items in chat_ctx, defaults to 30
+        :param int ctx_max_n: max items in chat_ctx, defaults to 25
         :param float ctx_trim_ratio: how many items to truncate, defaults to 0.7
         """
         # conversation language
@@ -159,7 +159,7 @@ class TechnicalQAStudentAgent(BaseStudentAgent):
         ctx: JobContext,
         interview_lang: Literal["en", "ja"] = "en",
         seed_chat_ctx_filepath: str | None = None,
-        ctx_max_n: int = 30,
+        ctx_max_n: int = 25,
         ctx_trim_ratio: float = 0.7,
     ) -> None:
         super().__init__(
@@ -196,7 +196,7 @@ class BehavioralQAStudentAgent(BaseStudentAgent):
         ctx: JobContext,
         chat_ctx: ChatContext,
         interview_lang: Literal["en", "ja"] = "en",
-        ctx_max_n: int = 30,
+        ctx_max_n: int = 25,
         ctx_trim_ratio: float = 0.7,
     ) -> None:
         super().__init__(
@@ -240,7 +240,7 @@ async def entrypoint(ctx: JobContext) -> None:
 
     @session.on("conversation_item_added")
     def on_conversation_item_added(event: ConversationItemAddedEvent) -> None:
-        logger.info(f"Conversation item added from {event.item.role}")
+        logger.info(f"Conversation item added from {event.item.role}")  # type: ignore
         if session._agent is not None:
             chat_ctx_dumper.agent = session._agent  # type: ignore
             chat_ctx_dumper.dump_chat_ctx()
