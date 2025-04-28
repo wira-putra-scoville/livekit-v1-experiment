@@ -4,6 +4,7 @@ from typing import Literal
 from dotenv import load_dotenv
 from livekit.agents import Agent, AgentSession, JobContext, JobProcess, WorkerOptions, cli
 from livekit.plugins import openai, silero
+from livekit.plugins.openai.realtime.realtime_model import InputAudioTranscription
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 logger = logging.getLogger("realtime-turn-detector")
@@ -43,14 +44,16 @@ async def entrypoint(ctx: JobContext) -> None:
         allow_interruptions=True,
         turn_detection=MultilingualModel(),
         vad=ctx.proc.userdata["vad"],
-        stt=openai.STT(language="ja", model="gpt-4o-mini-transcribe"),
+        # stt=openai.STT(language="ja", model="gpt-4o-mini-transcribe"),
         llm=openai.realtime.RealtimeModel(
             model="gpt-4o-realtime-preview-2024-12-17",
             voice="alloy",
             # it's necessary to turn off turn detection in the OpenAI Realtime API in order to use
             # LiveKit's turn detection model
             turn_detection=None,
-            input_audio_transcription=None,  # we use STT instead
+            input_audio_transcription=InputAudioTranscription(
+                language="ja", model="gpt-4o-mini-transcribe"
+            ),
         ),
     )
     await session.start(agent=Agent(instructions=get_instruction("Japanese")), room=ctx.room)

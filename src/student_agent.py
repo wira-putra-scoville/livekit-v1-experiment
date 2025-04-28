@@ -19,6 +19,7 @@ from livekit.agents import (
     function_tool,
 )
 from livekit.plugins import noise_cancellation, openai, silero
+from livekit.plugins.openai.realtime.realtime_model import InputAudioTranscription
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 from utils import ChatCtxDumper, get_datetime_str, load_chat_ctx_from_file
@@ -104,7 +105,9 @@ class BaseStudentAgent(Agent):
                 model="gpt-4o-realtime-preview-2024-12-17",
                 voice="sage",
                 turn_detection=None,
-                input_audio_transcription=None,  # we use STT instead
+                input_audio_transcription=InputAudioTranscription(
+                    language=stt_lang, model="gpt-4o-mini-transcribe"
+                ),
             ),
         )
 
