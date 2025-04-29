@@ -10,6 +10,9 @@ from dotenv import load_dotenv
 from livekit.agents import (
     Agent,
     AgentSession,
+    AudioConfig,
+    BackgroundAudioPlayer,
+    BuiltinAudioClip,
     ConversationItemAddedEvent,
     JobContext,
     JobProcess,
@@ -118,11 +121,15 @@ class SampleAgent(Agent):
 
 async def entrypoint(ctx: JobContext) -> None:
     await ctx.connect()
+
+    # store reference to asyncio tasks
     background_tasks = set()
 
+    # agent
     agent = SampleAgent(ctx=ctx)
     agent.print_tools()
 
+    # add new tool
     new_tool = function_tool(
         company_info(),
         name="given_company_info",
@@ -131,8 +138,21 @@ async def entrypoint(ctx: JobContext) -> None:
     await agent.update_tools(agent.tools + [new_tool])  # noqa
     agent.print_tools()
 
+    # session
     session: AgentSession[UserData] = AgentSession(userdata=UserData())
     await session.start(agent=agent, room=ctx.room)
+
+    # audio
+    background_audio = BackgroundAudioPlayer(
+        # play office ambience sound looping in the background
+        ambient_sound=AudioConfig(BuiltinAudioClip.OFFICE_AMBIENCE, volume=0.8),
+        # play keyboard typing sound when the agent is thinking
+        thinking_sound=[
+            AudioConfig(BuiltinAudioClip.KEYBOARD_TYPING, volume=0.8),
+            AudioConfig(BuiltinAudioClip.KEYBOARD_TYPING2, volume=0.8),
+        ],
+    )
+    await background_audio.start(room=ctx.room, agent_session=session)
 
     @session.on("conversation_item_added")
     def on_conversation_item_added(event: ConversationItemAddedEvent) -> None:
