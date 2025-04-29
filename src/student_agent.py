@@ -8,7 +8,6 @@ from livekit.agents import (
     Agent,
     AgentSession,
     ChatContext,
-    ChatItem,
     ConversationItemAddedEvent,
     JobContext,
     JobProcess,
@@ -127,33 +126,19 @@ class BaseStudentAgent(Agent):
         """Truncate the context if it is too long.
         Only keep system prompt and user/agent messages.
         """
-
-        def _valid_item(item: ChatItem) -> bool:
-            return item.type == "message"
-
-        def task_done_callback(task: asyncio.Task) -> None:
-            logger.info("Update chat context done")
-            self.background_tasks.discard(task)
-
         if self.chat_ctx is not None:
-            chat_ctx_copy = self.chat_ctx.copy()
-            valid_items = []
-            for item in chat_ctx_copy.items:
-                if _valid_item(item):
-                    valid_items.append(item)
+            new_chat_ctx = self.chat_ctx.copy()
 
-            if len(valid_items) > self.ctx_max_n:
-                logger.info(f"Chat context size: {len(valid_items)}, truncating...")
-                new_chat_ctx = ChatContext(items=valid_items)
-                new_chat_ctx = new_chat_ctx.truncate(
-                    max_items=min(
-                        len(valid_items), round(len(valid_items) * (1.0 - self.ctx_trim_ratio))
-                    )
-                )
+            if len(new_chat_ctx.items) > self.ctx_max_n:
+                logger.info(f"Chat context size: {len(new_chat_ctx.items)}, truncating...")
+                max_itms = round(len(new_chat_ctx.items) * (1.0 - self.ctx_trim_ratio))
+                if max_itms <= 0:
+                    max_itms = 1
+                new_chat_ctx = new_chat_ctx.truncate(max_items=max_itms)
                 logger.info(f"Start update chat context, size: {len(new_chat_ctx.items)}")
                 task = asyncio.create_task(self.update_chat_ctx(new_chat_ctx))
                 self.background_tasks.add(task)
-                task.add_done_callback(task_done_callback)
+                task.add_done_callback(self.background_tasks.discard)
 
 
 class TechnicalQAStudentAgent(BaseStudentAgent):
@@ -230,7 +215,11 @@ async def entrypoint(ctx: JobContext) -> None:
 
     userdata = UserData(ctx=ctx, curr_section="Unknown")
     agent = TechnicalQAStudentAgent(
-        ctx=ctx, interview_lang="en", seed_chat_ctx_filepath="chat_ctx_dump/seed_conversation.json"
+        ctx=ctx,
+        interview_lang="en",
+        # seed_chat_ctx_filepath="chat_ctx_dump/seed_conversation.json",
+        ctx_max_n=8,
+        ctx_trim_ratio=0.7,
     )
     chat_ctx_dumper = ChatCtxDumper(logger=logger, output_folder=CHAT_CTX_DUMP_FOLDER, agent=agent)
 
@@ -248,6 +237,9 @@ async def entrypoint(ctx: JobContext) -> None:
             chat_ctx_dumper.agent = session._agent  # type: ignore
             chat_ctx_dumper.dump_chat_ctx()
             session._agent.context_management()  # type: ignore
+
+        # check if truncated messages persist in the history
+        logger.info(f"N session history: {len(session.history.items)}")
 
 
 def prewarm(proc: JobProcess) -> None:
