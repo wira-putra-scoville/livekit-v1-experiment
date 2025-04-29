@@ -109,8 +109,13 @@ class SampleAgent(Agent):
         self.session.generate_reply(instructions="Greet the interviewer Mr. Tamura.")
 
     @function_tool
-    async def how_are_you(self) -> dict[str, Any]:  # noqa
+    async def how_are_you(self) -> dict[str, Any]:
         """Called when the user asks about your condition. Example questions: "How are you?", "I'm great how about you?", "How is it going?"."""  # noqa
+        handle = self.session.generate_reply(
+            instructions="The interviewer asks how are you. Reply with a filler word such as 'let me think for a momment.'",  # noqa
+            allow_interruptions=False,
+        )
+        await handle
         return {"message": "I am not very well due to the recent rainy days?"}
 
     def print_tools(self) -> None:
