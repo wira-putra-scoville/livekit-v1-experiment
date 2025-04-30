@@ -69,10 +69,12 @@ async def entrypoint(ctx: JobContext) -> None:
 
     @session.on("conversation_item_added")
     def process_1(event: ConversationItemAddedEvent) -> None:
+        del event
         logger.info("Process 1")
 
     @session.on("conversation_item_added")
     def process_2(event: ConversationItemAddedEvent) -> None:
+        del event
         logger.info("Process 2")
 
 

@@ -63,8 +63,8 @@ def get_instruction(interview_language: Literal["Japanese", "English"] = "Japane
     return system_prompt
 
 
-def company_info():
-    async def given_company_info(context: RunContext, info: str):  # noqa
+def company_info() -> Any:
+    async def given_company_info(context: RunContext, info: str) -> dict[str, Any]:  # noqa
         """Called when the interviewer explains about the company.
 
         :param str info: company information or explanation. This is required.
@@ -76,8 +76,8 @@ def company_info():
     return given_company_info
 
 
-def answer_company_info_question():
-    async def answer_company_question(answer: str) -> None:  # noqa
+def answer_company_info_question() -> Any:
+    async def answer_company_question(answer: str) -> dict[str, Any]:  # noqa
         """Called when the interviewer answers your question regarding the company."""
         logger.info("Answering company question")
         return {"interviewer_answer": answer}
@@ -175,7 +175,7 @@ async def entrypoint(ctx: JobContext) -> None:
                 + "question regarding the company.",
             )
             task = asyncio.create_task(
-                session._agent.update_tools(session._agent.tools + [new_tool])  # noqa
+                session._agent.update_tools(session._agent.tools + [new_tool])  # type: ignore # noqa
             )
             background_tasks.add(task)
             task.add_done_callback(background_tasks.discard)

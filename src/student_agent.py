@@ -65,13 +65,13 @@ def get_instruction(interview_language: str) -> str:
 
 
 def session_context_manager(
-    session: AgentSession[UserData], max_items: int = 8, ctx_trim_ratio=0.7
+    session: AgentSession[UserData], max_items: int = 8, ctx_trim_ratio: float = 0.7
 ) -> None:
     """Truncate the context if it is too long.
     Only keep system prompt and user/agent messages.
     """
-    if len(session._agent.chat_ctx.items) > max_items:
-        new_chat_ctx = session._agent.chat_ctx.copy()
+    if len(session._agent.chat_ctx.items) > max_items:  # type: ignore
+        new_chat_ctx = session._agent.chat_ctx.copy()  # type: ignore
         background_tasks = set()
 
         logger.info(f"Chat context size: {len(new_chat_ctx.items)}, truncating...")
@@ -80,7 +80,7 @@ def session_context_manager(
             max_itms = 1
         new_chat_ctx = new_chat_ctx.truncate(max_items=max_itms)
         logger.info(f"Start update chat context, size: {len(new_chat_ctx.items)}")
-        task = asyncio.create_task(session._agent.update_chat_ctx(new_chat_ctx))
+        task = asyncio.create_task(session._agent.update_chat_ctx(new_chat_ctx))  # type: ignore
         background_tasks.add(task)
         task.add_done_callback(background_tasks.discard)
 
@@ -147,6 +147,7 @@ class BaseStudentAgent(Agent):
         """Truncate the context if it is too long.
         Only keep system prompt and user/agent messages.
         """
+        logger.info(f"{self.__class__.__name__} context management")
         if self.chat_ctx is not None:
             new_chat_ctx = self.chat_ctx.copy()
 
@@ -239,7 +240,7 @@ async def entrypoint(ctx: JobContext) -> None:
         ctx=ctx,
         interview_lang="en",
         # seed_chat_ctx_filepath="chat_ctx_dump/seed_conversation.json",
-        ctx_max_n=8,
+        ctx_max_n=25,
         ctx_trim_ratio=0.7,
     )
     chat_ctx_dumper = ChatCtxDumper(logger=logger, output_folder=CHAT_CTX_DUMP_FOLDER, agent=agent)
@@ -258,9 +259,10 @@ async def entrypoint(ctx: JobContext) -> None:
             chat_ctx_dumper.agent = session._agent  # type: ignore
             chat_ctx_dumper.dump_chat_ctx()
             # session._agent.context_management()  # type: ignore
-            session_context_manager(session)
+            session_context_manager(session, max_items=25, ctx_trim_ratio=0.7)
 
         # check if truncated messages persist in the history
+        logger.info(f"N agent chat ctx: {len(session._agent.chat_ctx.items)}")  # type: ignore
         logger.info(f"N session history: {len(session.history.items)}")
 
 
